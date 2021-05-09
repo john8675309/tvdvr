@@ -6,12 +6,17 @@
 $GLOBALS['tvgrab']="/usr/bin/tv_grab_na_dd";
 $GLOBALS['grabFile']="/videos/tv/guide.xml";
 $GLOBALS['config']="/root/.xmltv/tv_grab_na_dd.conf";
+$GLOBALS['recordingDir']="/videos/tv/downloaded/";
+$GLOBALS['m3u'] = "";
 
-//tv_grab_na_dd > guide.xml.gz 
 
 if ($argc < 2) {
   exit;
 }
+
+$GLOBALS['pdo'] = new PDO('sqlite:tv.sqlite');
+$GLOBALS['pdo']->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
 
 foreach($argv as $arg) {
   if ($arg == "--loadDatabase") {
@@ -23,10 +28,84 @@ foreach($argv as $arg) {
   if ($arg == "--checkTime") {
     checkTime();
   }
+  if ($arg == "--loadChannels") {
+    loadChannels();
+  }
 }
 
 function checkTime() {
-  echo "Checking Recording Starts/Stops\n";
+  echo "Checking Recording Start\n";
+  $stmt = $GLOBALS['pdo']->query('SELECT count(*) as count FROM episodes WHERE now() between start and stop and recording=0');
+  if ($stmt->fetchColumn() > 0) {
+    echo "Need to start a recording!\n";
+    $stmt = $GLOBALS['pdo']->query('SELECT ROWID,file,record_url FROM episodes WHERE now() between start and stop and recording=0');
+    while ($row = $stmt->fetch()) {
+      $descriptorspec = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w']
+      ];
+      $command = "cvlc -v \"".$row['record_url']."\" --sout '#file{dst=".$GLOBALS['recordingDir'].$row['file']."}' 2> ".$GLOBALS['recordingDir'].$row['file'].".log";
+      $proc = proc_open($command, $descriptorspec, $pipes);
+      $proc_details = proc_get_status($proc);
+      $pid = $proc_details['pid'];
+      $sql = "UPDATE episodes SET recording=1,pid=? WHERE id=?";
+      $GLOBALS['pdo']->prepare($sql)->execute([$pid,$row['ROWID']]);
+    }
+  }
+  $stmt = $GLOBALS['pdo']->query('SELECT count(*) as count FROM episodes WHERE now() >= stop and recording=1');
+  if ($stmt->fetchColumn() > 0) {
+    echo "Need to stop a recording!\n";
+    $stmt = $GLOBALS['pdo']->query('SELECT ROWID,file,pid FROM episodes WHERE now() >= stop and recording=1');
+    while ($row = $stmt->fetch()) {
+      $sql = "DELETE from episodes where id=?";
+      $GLOBALS['pdo']->prepare($sql)->execute([$row['ROWID']]);
+      system("/usr/bin/pkill -P ".$row['pid']);      
+    }
+  }
+}
+
+function loadChannels() {
+  #############################
+  #A Really Crappy M3U Parser #
+  #############################
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $GLOBALS['m3u']);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  $data = curl_exec ($ch);
+  $error = curl_error($ch);
+  curl_close ($ch);
+
+  if ($error != "") {
+    echo "Whoops Something Went Wrong\n";
+    return;
+  }
+
+  $lines = explode("\n",$data);
+  $haveInfo="";
+  $channel="";
+  $channel_url = "";
+
+  $sql = "DELETE from channels";
+  $GLOBALS['pdo']->prepare($sql)->execute();
+
+  foreach($lines as $i) {
+    $i = trim($i);
+    if ($haveInfo == 1) {
+      if (strstr($i,"http")) {
+        //echo "$i\n";
+        $haveInfo=0;
+        $sql = "INSERT into channels (channel,channel_url) values (?,?)";
+        $GLOBALS['pdo']->prepare($sql)->execute([$channel,$i]);
+      }
+    }
+    if (strstr($i,"#EXTINF:-1 tvg-id")) {
+      $haveInfo = 1;
+      $e = explode(" tvg-name=\"",$i);
+      $e = explode("\"",$e[1]);
+      $channel = $e[0];
+    }
+  }
 }
 
 function loadShows() {
@@ -42,52 +121,42 @@ function loadDatabase() {
   echo "Loading the Database\n";
   $xml = simplexml_load_file($GLOBALS['grabFile']);
 
-  $host = '127.0.0.1';
-  $db   = 'tvripper';
-  $user = 'tvripper';
-  $pass = 'tvripper';
-  $charset = 'utf8mb4';
-
-  $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-  $options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-  ];
-  try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-  } catch (\PDOException $e) {
-     throw new \PDOException($e->getMessage(), (int)$e->getCode());
-  }
 
   foreach($xml->programme as $programme) {
     if ($programme->{'title'} == "House Hunters International" && $programme->attributes()['channel'] == "I14902.labs.zap2it.com" && !isset($programme->{'previously-shown'})) {
-      //print_r($programme);
-      $channel = "";
+      $channel="";
       $title = $programme->{'title'};
       $desc = $programme->{'desc'};
       $start = $programme->attributes()['start'];
       $stop = $programme->attributes()['stop'];
 
       $date_start = strtotime($start);
-      $date_start = $date_start - 180;
-      $date_start =  date("Y-m-d H:i:s", $date_start);
-      $date_stop = strtotime($stop);
-      $date_stop = $date_stop + 180;
-      $date_stop =  date("Y-m-d H:i:s", $date_stop);
+      if ($date_start > time()) {
+        $date_start = $date_start - 180;
+        $date_start =  date("Y-m-d H:i:s", $date_start);
+        $date_stop = strtotime($stop);
+        $date_stop = $date_stop + 180;
+        $date_stop =  date("Y-m-d H:i:s", $date_stop);
 
-      $sep = $programme->{'episode-num'}[1];
-      $season = substr($sep,0,3);
-      $episode = substr($sep,3);
+        $sep = "";
+        if (isset($programme->{'episode-num'}[1])) {      
+         $sep = $programme->{'episode-num'}[1];
+        }
+        if (isset($programme->{'episode-num'}[2])) {      
+          $sep = $programme->{'episode-num'}[2];
+        }
+        $season = substr($sep,0,3);
+        $episode = substr($sep,3);
 
-      $show = "House.Hunters.International.S".$season."E".$episode.".mkv";
+        $show = "House.Hunters.International.S".$season."E".$episode.".mp4";
 
-      $stmt = $pdo->prepare('SELECT count(*) as count FROM episodes WHERE file = ?');
-      $stmt->execute([$show]);
-      $alreadyInserted = $stmt->fetch();
-      if ($alreadyInserted['count'] == 0) {
-        $sql = "INSERT into episodes (episode,file,start,stop,record_url) values (?,?,?,?,?)";
-        $pdo->prepare($sql)->execute([$sep, $show,$date_start,$date_stop,$channel]);
+        $stmt = $GLOBALS['pdo']->prepare('SELECT count(*) as count FROM episodes WHERE file = ?');
+        $stmt->execute([$show]);
+        $alreadyInserted = $stmt->fetch();
+        if ($alreadyInserted['count'] == 0) {
+          $sql = "INSERT into episodes (episode,file,start,stop,record_url) values (?,?,?,?,?)";
+          $GLOBALS['pdo']->prepare($sql)->execute([$sep, $show,$date_start,$date_stop,$channel]);
+        }
       }
     }
   }
