@@ -1,0 +1,94 @@
+#!/usr/bin/php
+<?php
+#################################
+# Variables Feel Free to Config #
+#################################
+$GLOBALS['tvgrab']="/usr/bin/tv_grab_na_dd";
+$GLOBALS['grabFile']="/videos/tv/guide.xml";
+$GLOBALS['config']="/root/.xmltv/tv_grab_na_dd.conf";
+
+//tv_grab_na_dd > guide.xml.gz 
+
+if ($argc < 2) {
+  exit;
+}
+
+foreach($argv as $arg) {
+  if ($arg == "--loadDatabase") {
+    loadDatabase();
+  }
+  if ($arg == "--loadShows") {
+    loadShows();
+  }
+  if ($arg == "--checkTime") {
+    checkTime();
+  }
+}
+
+function checkTime() {
+  echo "Checking Recording Starts/Stops\n";
+}
+
+function loadShows() {
+  echo "Loading Shows\n";
+  $config = "--quiet";
+  if ($GLOBALS['config'] != "") {
+    $config = "--quiet --config-file " . $GLOBALS['config'];
+  }
+  system($GLOBALS['tvgrab'] . " " . $config ." > " .$GLOBALS['grabFile']);
+}
+
+function loadDatabase() {
+  echo "Loading the Database\n";
+  $xml = simplexml_load_file($GLOBALS['grabFile']);
+
+  $host = '127.0.0.1';
+  $db   = 'tvripper';
+  $user = 'tvripper';
+  $pass = 'tvripper';
+  $charset = 'utf8mb4';
+
+  $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+  $options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+  ];
+  try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+  } catch (\PDOException $e) {
+     throw new \PDOException($e->getMessage(), (int)$e->getCode());
+  }
+
+  foreach($xml->programme as $programme) {
+    if ($programme->{'title'} == "House Hunters International" && $programme->attributes()['channel'] == "I14902.labs.zap2it.com" && !isset($programme->{'previously-shown'})) {
+      //print_r($programme);
+      $channel = "";
+      $title = $programme->{'title'};
+      $desc = $programme->{'desc'};
+      $start = $programme->attributes()['start'];
+      $stop = $programme->attributes()['stop'];
+
+      $date_start = strtotime($start);
+      $date_start = $date_start - 180;
+      $date_start =  date("Y-m-d H:i:s", $date_start);
+      $date_stop = strtotime($stop);
+      $date_stop = $date_stop + 180;
+      $date_stop =  date("Y-m-d H:i:s", $date_stop);
+
+      $sep = $programme->{'episode-num'}[1];
+      $season = substr($sep,0,3);
+      $episode = substr($sep,3);
+
+      $show = "House.Hunters.International.S".$season."E".$episode.".mkv";
+
+      $stmt = $pdo->prepare('SELECT count(*) as count FROM episodes WHERE file = ?');
+      $stmt->execute([$show]);
+      $alreadyInserted = $stmt->fetch();
+      if ($alreadyInserted['count'] == 0) {
+        $sql = "INSERT into episodes (episode,file,start,stop,record_url) values (?,?,?,?,?)";
+        $pdo->prepare($sql)->execute([$sep, $show,$date_start,$date_stop,$channel]);
+      }
+    }
+  }
+}
