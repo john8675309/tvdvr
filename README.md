@@ -63,7 +63,11 @@ Change permissions on /videos directory.
 chown -R user:user /videos
 ```
 ## Command Line Flags  
-Command line flags are run in the order you pass them, for example on the nightly if you run ./tv --loadDatabase --loadShows it will download from Schedules Direct and then find new recordings.  
+Command line flags are run in the order you pass them, for example on the nightly if you run 
+```
+./tv --loadDatabase --loadShows 
+```  
+it will download from Schedules Direct and then find new recordings.  
 ```
 --loadDatabase Download from Schedules Direct save the shows in a guide.xml  
 --loadShows Look through all the programs in guide.xml and load any recordings into the database.  
