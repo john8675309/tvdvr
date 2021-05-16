@@ -64,14 +64,14 @@ chown -R user:user /videos
 ```
 ## Command Line Flags  
 Command line flags are run in the order you pass them, for example on the nightly if you run ./tv --loadDatabase --loadShows it will download from Schedules Direct and then find new recordings.  
-
+```
 --loadDatabase Download from Schedules Direct save the shows in a guide.xml  
 --loadShows Look through all the programs in guide.xml and load any recordings into the database.  
 --checkTime Look for any recordings to stop/start and starts and stops them.  
 --loadChannels Loads all the channels from a .m3u http server, this will help map Schedules Direct channel to your provider channel  
 --fakeShow We all need a way to test! this reads the Global fakeShowUrl (video url) and fakeShowLength (How long to record)  
 --convert Convert rip the commercials out and scp the file.  
-
+```
 
 ## Variables In The tv file  
 ```
