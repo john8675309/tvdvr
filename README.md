@@ -2,17 +2,21 @@
 This is an application that allows you to use IPTV streams and DVR them.  
 It requires tv_grab_na_dd and a subscription to schedules direct (other XMLTV services may be supported, you will need to hack the script)  
 
+## Reason For Being
+We like to watch TV shows on Saturday and Sunday mornings, we don't watch TV at all during the week.  We also don't like to waste a lot of time watching the shows, with the commercials.  
+This simple php application allows us to record the shows from something like an hdhomerun or other IPTV provider, strip the commercials, scp to our plex server, watch and get on with our day.
+
 ## Required Applications:  
 Sqlite3  
 PHP  
--curl  
--pdo  
--sqlite  
+- Curl  
+- PDO  
+- Sqlite  
 FFmpeg  
-comcut (included)  
-comcut ini file (included)  
-comskip https://github.com/erikkaashoek/Comskip  
-tv_grab_na_dd  
+Comskip https://github.com/erikkaashoek/Comskip  
+- Comcut (edited, included)  
+- Comskip ini file (included)  
+tv_grab_na_dd (xmltv)  
 
 ## Install:  
 ```
@@ -36,7 +40,7 @@ nano tv
 ```  
 edit the variables if you followed the above steps probably not much will need to be configured except for where you want to ssh to and the id_rsa key  
 
-After this last thing to do would be to configure schedules direct: https://schedulesdirect.org/  
+After this next thing to do would be to configure schedules direct: https://schedulesdirect.org/  
 you probably shoudn't run this a root so when you run this command do it as a user NOT as root (You have been warned)  
 ```
 tv_grab_na_dd  --configure
@@ -51,7 +55,7 @@ crontab -e
 * * * * * /videos/tv/tv --checkTime >> /videos/tv/log 2>> /videos/tv/err.txt
 * * * * * /videos/tv/tv --convert >> /videos/tv/log 2>> /videos/tv/err.txt
 ```  
-Lastly change permissions on /videos directory
+Change permissions on /videos directory
 ```
 chown -R user:user /videos
 ```
