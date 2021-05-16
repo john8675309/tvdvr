@@ -12,10 +12,13 @@ PHP
 - Curl  
 - PDO  
 - Sqlite  
+
 FFmpeg  
+
 Comskip https://github.com/erikkaashoek/Comskip  
 - Comcut (edited, included)  
 - Comskip ini file (included)  
+
 tv_grab_na_dd (xmltv)  
 
 ## Install:  
