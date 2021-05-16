@@ -62,6 +62,35 @@ Change permissions on /videos directory.
 ```
 chown -R user:user /videos
 ```
+## Command Line Flags  
+Command line flags are run in the order you pass them, for example on the nightly if you run ./tv --loadDatabase --loadShows it will download from Schedules Direct and then find new recordings.  
+
+--loadDatabase Download from Schedules Direct save the shows in a guide.xml  
+--loadShows Look through all the programs in guide.xml and load any recordings into the database.  
+--checkTime Look for any recordings to stop/start and starts and stops them.  
+--loadChannels Loads all the channels from a .m3u http server, this will help map Schedules Direct channel to your provider channel  
+--fakeShow We all need a way to test! this reads the Global fakeShowUrl (video url) and fakeShowLength (How long to record)  
+--convert Convert rip the commercials out and scp the file.  
+
+
+## Variables In The tv file  
+```
+$GLOBALS['tvgrab']="/usr/bin/tv_grab_na_dd"; #The tv_grab_na_dd script location  
+$GLOBALS['grabFile']="/videos/tv/guide.xml"; #The location of the guide.xml after tv_grab_na_dd is run  
+$GLOBALS['config']="/home/user/.xmltv/tv_grab_na_dd.conf"; #The Location of the tv_grab_na_dd Config file  
+$GLOBALS['recordingDir']="/videos/tv/downloaded/"; #Where the first recording directory is  
+$GLOBALS['waitingDir']="/videos/tv/waiting/"; #Waiting to be have the commericials removed.  
+$GLOBALS['processDir']="/videos/tv/processfiles/"; #Unused right now.  
+$GLOBALS['doneDir']="/videos/tv/done/"; #Where to place the file after commericals have been ripped out and all post processing is done.  
+$GLOBALS['m3u'] = ""; #The m3u download location with a list of all your channels.  
+$GLOBALS['fakeShowLength']=10; #How many minutes to record our fake testing show.  
+$GLOBALS['fakeShowUrl']=""; #The url of a video to record for the fake show.  
+$GLOBALS['dbLocation']="/videos/tv/tv.sqlite"; #The Location of the database  
+$GLOBALS['comcut']="/usr/bin/comcut"; #Location of the comcut script.  
+$GLOBALS['copyDir']="/mnt/TV/"; #The location to scp to  
+$GLOBALS['remoteHost']="user@remote"; #Remote server to copy the finished file to.  
+$GLOBALS['rsa']="/home/user/.ssh/id_rsa"; #Your Private key you should have the id_rsa.pub contents on the remote machine.  
+```
 
 ## TODO:
 - Right now you have to edit the tv script in order to add a new recording, that's lame, that will be my next fix.  
