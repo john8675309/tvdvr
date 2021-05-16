@@ -1,6 +1,6 @@
 # TVDVR
 This is an application that allows you to use IPTV streams and DVR them.  
-It requires tv_grab_na_dd and a subscription to schedules direct (other XMLTV services may be supported, you will need to hack the script)  
+It requires tv_grab_na_dd and a subscription to schedules direct (other XMLTV services may be supported, you will need to hack the script).  
 
 ## Reason For Being
 We like to watch TV shows on Saturday and Sunday mornings, we don't watch TV at all during the week.  We also don't like to waste a lot of time watching the shows, with the commercials.  
@@ -41,14 +41,14 @@ cd /videos/tv/
 mkdir {copying,done,downloaded,processfiles,waiting} 
 nano tv  
 ```  
-edit the variables if you followed the above steps probably not much will need to be configured except for where you want to ssh to and the id_rsa key  
+Edit the variables if you followed the above steps probably not much will need to be configured except for where you want to ssh to and the id_rsa key.  
 
 After this next thing to do would be to configure schedules direct: https://schedulesdirect.org/  
-you probably shoudn't run this a root so when you run this command do it as a user NOT as root (You have been warned)  
+you probably shoudn't run this a root so when you run this command do it as a user NOT as root (You have been warned).  
 ```
 tv_grab_na_dd  --configure
 ```
-edit the tv file again and set the location of the xmltv config file for example: /home/user/.xmltv/tv_grab_na_dd.conf  
+Edit the tv file again and set the location of the xmltv config file for example: /home/user/.xmltv/tv_grab_na_dd.conf  
 create a cronjob for all the required stuff. Do this as your user no more root!  
 ```
 crontab -e
@@ -58,7 +58,7 @@ crontab -e
 * * * * * /videos/tv/tv --checkTime >> /videos/tv/log 2>> /videos/tv/err.txt
 * * * * * /videos/tv/tv --convert >> /videos/tv/log 2>> /videos/tv/err.txt
 ```  
-Change permissions on /videos directory
+Change permissions on /videos directory.
 ```
 chown -R user:user /videos
 ```
